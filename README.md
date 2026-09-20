@@ -1,6 +1,7 @@
 # DAA Assignment 1 — Divide and Conquer & Asymptotic Notations
 
-Java implementation for MergeSort, QuickSort and QuickSelect with metrics, JUnit 5 tests, benchmark, CSV export and PNG plots.
+Java implementation of MergeSort, QuickSort and QuickSelect with a `Metrics` class, JUnit 5 tests,
+a benchmark that exports `results.csv`, and PNG plots.
 
 ## Requirements
 
@@ -10,7 +11,7 @@ Java implementation for MergeSort, QuickSort and QuickSelect with metrics, JUnit
 ## Project structure
 
 ```text
-DAA_Assignment1/
+.
 ├── pom.xml
 ├── README.md
 ├── REPORT.md
@@ -21,73 +22,47 @@ DAA_Assignment1/
 │   └── ratio_vs_n.png
 └── src/
     ├── main/java/daa/
-    │   ├── Metrics.java
-    │   ├── MergeSort.java
-    │   ├── QuickPartition.java
-    │   ├── QuickSort.java
-    │   ├── QuickSelect.java
-    │   ├── InputGenerator.java
-    │   ├── Benchmark.java
-    │   └── PlotGenerator.java
+    │   ├── Metrics.java          comparisons, max recursion depth, time (System.nanoTime)
+    │   ├── MergeSort.java        one reusable buffer, insertion-sort cutoff 15, linear merge
+    │   ├── QuickPartition.java   random pivot + 3-way partition (shared by QuickSort and QuickSelect)
+    │   ├── QuickSort.java        smaller side first, larger side in a loop
+    │   ├── QuickSelect.java      k-th smallest element, k starts from 0
+    │   ├── InputGenerator.java   random / sorted / duplicates inputs
+    │   ├── Benchmark.java        runs all cases, writes results.csv, calls PlotGenerator
+    │   └── PlotGenerator.java    draws the PNG plots with Java2D (no extra libraries)
     └── test/java/daa/
         └── AlgorithmTest.java
 ```
 
-## Build and tests
+## Build and run the tests
 
 ```bash
 mvn clean test
 ```
 
-## Benchmark
-
-Run:
+## Run the benchmark
 
 ```bash
 mvn -q -DskipTests package
 java -cp target/classes daa.Benchmark
 ```
 
-The benchmark runs all three algorithms on n = 1,000; 10,000; 100,000; 1,000,000 and on random, sorted and duplicate-heavy inputs. Each case is repeated five times and the median is written to `results.csv`.
+The benchmark runs MergeSort, QuickSort and QuickSelect on n = 1 000; 10 000; 100 000; 1 000 000 and on
+`random`, `sorted` and `duplicates` (values 0..9) inputs. Every case is repeated 5 times and the median
+is saved.
 
-The benchmark also creates:
+It **overwrites** the following files (run it only if you want to regenerate them):
 
+- `results.csv` — columns `algorithm,input,n,time_ms,comparisons,max_depth`
 - `plots/time_vs_n.png`
 - `plots/depth_vs_n.png`
 - `plots/ratio_vs_n.png`
 
-## Git workflow
+## Notes
 
-Recommended branches:
-
-- `main`
-- `feature/mergesort`
-- `feature/quicksort`
-- `feature/select`
-- `feature/metrics`
-
-Example commits:
-
-```bash
-git checkout -b feature/mergesort
-git add .
-git commit -m "feat(mergesort): add reusable buffer and insertion cutoff"
-
-git checkout main
-# merge the feature branch after checking it
-```
-
-Release tag:
-
-```bash
-git tag v1.0
-git push origin main --tags
-```
-
-## Submission
-
-Create a ZIP named:
-
-`DAA_Assignment1_name_surname_group.zip`
-
-Upload it to Moodle and provide the GitHub repository link. Keep the repository on branch `main` and create tag `v1.0`.
+- One "comparison" is one `<`, `>` or `<=` test between two array elements. In the 3-way partition an
+  element that is not smaller than the pivot costs two comparisons.
+- QuickSort and QuickSelect choose the pivot with `ThreadLocalRandom`, so their comparison counts differ
+  slightly from run to run. The numbers in `REPORT.md` correspond to the committed `results.csv`.
+  MergeSort is deterministic. Times depend on the machine.
+- `QuickSelect` rearranges the input array in place.

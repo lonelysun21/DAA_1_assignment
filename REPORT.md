@@ -1,146 +1,120 @@
 # Assignment 1 — Divide and Conquer & Asymptotic Notations
 
 **Course:** Design and Analysis of Algorithms  
-**Student:** Name Surname, Group  
+**Student:** Zhakanov Sanzhar, SE-2526
 **Date:** 20 September 2026
 
 ## 1. Implemented algorithms
 
-This project implements three required algorithms in Java: MergeSort, QuickSort and QuickSelect. MergeSort allocates one reusable helper buffer in the top-level call and passes the same buffer through recursive calls. Subarrays of size 15 or less are handled with Insertion Sort. QuickSort uses a random pivot, 3-way partitioning for values smaller than, equal to and greater than the pivot, and recurses only into the smaller side; the larger side is processed by a loop. Therefore, the recursion stack remains logarithmically bounded even when the input is already sorted. QuickSelect uses the same 3-way partition method as QuickSort and continues only in the part containing index `k`.
+The project implements MergeSort, QuickSort and QuickSelect for `int[]` in Java.
 
-The `Metrics` class stores comparison count, maximum recursion depth and elapsed time measured with `System.nanoTime()`. No global metric variables are used. The benchmark uses the median of five runs after a JVM warm-up phase.
+- **MergeSort** allocates one helper array in the top-level call and passes it down the recursion (no `new int[...]` inside recursive calls). Subarrays of 15 elements or fewer are sorted with Insertion Sort. Merging two sorted halves takes O(n).
+- **QuickSort** picks a random pivot and uses a 3-way partition (`< pivot`, `= pivot`, `> pivot`). It recurses only into the smaller part and processes the larger part in a `while` loop, so the recursion depth is at most about log₂ n even for sorted input.
+- **QuickSelect** reuses the same partition method and continues only in the part that contains index `k`. An empty array or an out-of-range `k` throws `IllegalArgumentException`.
+- **Metrics** counts comparisons, maximum recursion depth and time (`System.nanoTime()`); a `Metrics` object is passed into every algorithm, there are no global counters. For QuickSelect the "depth" is the number of partition rounds, i.e. the depth of the equivalent recursion.
+
+**Counting convention.** One comparison is one `<`, `>` or `<=` test between two elements. In the 3-way partition an element that is not smaller than the pivot needs a second test (`>`), so the partition uses about 1.5 comparisons per element instead of 1. This raises the constants of QuickSort and QuickSelect but does not change their growth.
 
 ## 2. Asymptotic bounds
 
 | Algorithm | Best case | Average case | Worst case |
 |---|---|---|---|
-| MergeSort | Θ(n log n) — the array is still split and merged at every level | Θ(n log n) — all levels perform linear merging | Θ(n log n) — merging remains linear at every level |
-| QuickSort | Θ(n log n) — partitions are balanced | Θ(n log n) — random pivots give balanced splits in expectation | Θ(n²) — repeated highly unbalanced pivots |
-| QuickSelect | Θ(n) — one partition places `k` in the equal region | Θ(n) — random pivot leaves one expected linear-size subproblem | Θ(n²) — repeated extreme pivots |
-| Insertion Sort | Θ(n) — already sorted input needs one comparison per element | Θ(n²) — random/inverted order causes quadratic shifting | Θ(n²) — reverse-sorted input causes maximum shifts |
+| MergeSort | **Θ(n log n)** — any input, e.g. already sorted: there are still log n levels and every merge scans Θ(n) elements | **Θ(n log n)** — random input, ≈ n·log₂n comparisons | **Θ(n log n)** — any input, e.g. interleaved halves: merging is linear at every level |
+| QuickSort (random pivot, 3-way) | **Θ(n)** — all elements equal: one partition puts everything into the "= pivot" block (with distinct keys the best case is Θ(n log n), perfectly balanced pivots) | **Θ(n log n)** — random input, and any fixed input because the pivot is random: expected ≈ 1.39·n·log₂n comparisons for distinct keys | **Θ(n²)** — every pivot is the minimum or maximum; probability 2ⁿ⁻¹/n!, so it practically never happens, and sorted input no longer causes it |
+| QuickSelect | **Θ(n)** — the first pivot equals the k-th element, or all elements are equal: one partition | **Θ(n)** — random input: expected ≈ 3.4·n comparisons for the median | **Θ(n²)** — every pivot is an extreme element and k lies on the far side; probability negligible |
+| Insertion Sort | **Θ(n)** — already sorted input: one comparison per element | **Θ(n²)** — random input: ≈ n²/4 inversions | **Θ(n²)** — reverse-sorted input: n(n−1)/2 comparisons and shifts |
 
-The asymptotic bounds describe growth with input size and do not predict the exact time on one computer. Constant factors, cache behavior, JVM warm-up and the MergeSort cutoff affect measured values.
+## 3. Recurrences and the Master Theorem
 
-## 3. Recurrence relations and Master Theorem
+Master Theorem for `T(n) = a·T(n/b) + f(n)`: compare `f(n)` with `n^(log_b a)`. Case 2: `f(n) = Θ(n^(log_b a))` ⇒ `T(n) = Θ(n^(log_b a) · log n)`. Case 3: `f(n) = Ω(n^(log_b a + ε))` plus the regularity condition ⇒ `T(n) = Θ(f(n))`.
 
 ### MergeSort
 
-For a balanced split:
+`T(n) = 2·T(n/2) + Θ(n)`
 
-`T(n) = 2T(n/2) + Θ(n)`
-
-Thus:
-
-- `a = 2`
-- `b = 2`
-- `f(n) = Θ(n)`
-- `n^(log_b a) = n`
-- Master Theorem Case 2
+- a = 2, b = 2, f(n) = Θ(n), n^(log₂ 2) = n
+- f(n) = Θ(n^(log_b a)) ⇒ **Case 2**
 - **T(n) = Θ(n log n)**
 
-The two recursive calls solve the two halves and the merge step scans the elements linearly.
+### QuickSort (balanced split)
 
-### QuickSort
+`T(n) = 2·T(n/2) + Θ(n)`
 
-For the required balanced-split analysis:
+- a = 2, b = 2, f(n) = Θ(n) (the partition pass), n^(log₂ 2) = n
+- **Case 2** ⇒ **T(n) = Θ(n log n)**
 
-`T(n) = 2T(n/2) + Θ(n)`
+*Why a random pivot gives O(n log n) on average.* A random pivot falls into the middle half of the sorted order (ranks n/4 … 3n/4) with probability 1/2, and then both parts have at most 3n/4 elements. So on average every second partition step shrinks the subproblem by a constant factor, the recursion tree has O(log n) levels in expectation, and each level costs O(n). Equivalently, two elements with ranks i < j are compared only if one of them is chosen as pivot before any element between them (probability 2/(j−i+1)); summing over all pairs gives ≈ 2·n·ln n comparisons.
 
-Therefore:
-
-- `a = 2`
-- `b = 2`
-- `f(n) = Θ(n)`
-- Master Theorem Case 2
-- **T(n) = Θ(n log n)**
-
-A random pivot does not guarantee a balanced split on every call, but over many calls the expected split is sufficiently balanced to give expected **O(n log n)** running time. Randomization also prevents an already sorted input from deterministically producing the same bad pivot sequence.
-
-### QuickSelect
-
-For the required balanced-split analysis:
+### QuickSelect (balanced split)
 
 `T(n) = T(n/2) + Θ(n)`
 
-Therefore:
-
-- `a = 1`
-- `b = 2`
-- `f(n) = Θ(n)`
-- `n^(log_b a) = 1`
-- Master Theorem Case 3
+- a = 1, b = 2, f(n) = Θ(n), n^(log₂ 1) = n⁰ = 1
+- f(n) = Ω(n^(0+ε)) with ε = 1, and the regularity condition holds: a·f(n/b) = n/2 ≤ ½·f(n)
+- This is **Case 3**, different from MergeSort and QuickSort (Case 2)
 - **T(n) = Θ(n)**
 
-Only one partition side is processed, so there is one recursive/subproblem term instead of two. The partition itself is linear in the current subarray size.
+The difference comes from recursing into only one half: the recursive part contributes only `n^(log_b a) = 1`, so the linear partition cost of the top level dominates.
 
 ## 4. Benchmark method
 
-The benchmark follows the assignment requirements:
+- Sizes: 1 000, 10 000, 100 000, 1 000 000. Inputs: `random` (random integers), `sorted` (already sorted), `duplicates` (random values 0..9). QuickSelect looks for the median (`k = n/2`).
+- Every case is run 5 times on a fresh copy of the same array; the median of time, comparisons and depth is saved. A short warm-up phase is executed before the measurements.
+- Output: `results.csv` with columns `algorithm,input,n,time_ms,comparisons,max_depth`.
+- QuickSort and QuickSelect use an unseeded random pivot, so their comparison counts differ slightly between runs; MergeSort is deterministic. All numbers in this report are taken from the committed `results.csv`. Times were measured on the author's laptop (macOS, OpenJDK 26, compiled for Java 17) and depend on the machine.
 
-- sizes: `1,000`, `10,000`, `100,000`, `1,000,000`;
-- input types: random integers, sorted arrays and duplicate-heavy arrays with values from `0` to `9`;
-- 5 runs for every algorithm/input/size combination;
-- median time is written to `results.csv`;
-- comparisons and maximum depth are also recorded;
-- the first warm-up runs are executed before measurements.
+## 5. Plots
 
-The CSV columns are:
+![Time vs n](plots/time_vs_n.png)
 
-`algorithm,input,n,time_ms,comparisons,max_depth`
+*Time vs n (log-log). One panel per input type, one line per algorithm.*
 
-The included benchmark was generated by the Java benchmark program. Exact time values are machine-dependent, so running the same command on another computer will produce different time measurements while preserving the expected asymptotic trends.
+![Max recursion depth vs n](plots/depth_vs_n.png)
 
-## 5. Observed results
+*Maximum recursion depth vs n. QuickSort stays below log₂ n even on sorted input.*
 
-The measured comparison counts follow the theoretical growth. MergeSort has approximately `n log2(n)` comparison growth, while QuickSort on random and sorted inputs also shows the expected `n log n` scale. On duplicate-heavy input, the 3-way QuickSort partition is especially effective because all equal values are placed in the middle region at once. Its measured recursion depth stays very small for duplicate-heavy data.
+![Ratio vs n](plots/ratio_vs_n.png)
 
-QuickSelect performs only one side of the partition after each step, so its comparison count grows much more slowly than the sorting algorithms. The ratio `comparisons / n` is the appropriate normalization for QuickSelect, while `comparisons / (n log2(n))` is used for the sorting algorithms.
+*Ratio vs n. One panel per algorithm, one line per input type: comparisons / (n·log₂ n) for the sorts, comparisons / n for QuickSelect.*
 
-## 6. Θ-bound check
+## 6. Θ check
 
-For a function `f(n) = Θ(g(n))`, there are positive constants `c1`, `c2` and `n0` such that:
+`f(n) = Θ(g(n))` means there are constants c₁, c₂ > 0 and n₀ with `c₁·g(n) ≤ f(n) ≤ c₂·g(n)` for all `n ≥ n₀`. Here f(n) is the measured number of comparisons; if `f(n)/g(n)` becomes almost constant, the guess for g(n) is supported. The constants below are read from the three largest sizes (n₀ = 10 000) and rounded outwards. With only three points this is empirical evidence, not a proof.
 
-`c1 g(n) ≤ f(n) ≤ c2 g(n)` for all `n ≥ n0`.
+| Algorithm | Input | g(n) | ratio at n = 10⁴ / 10⁵ / 10⁶ | c₁ | c₂ | n₀ |
+|---|---|---|---|---:|---:|---:|
+| MergeSort | random | n log₂n | 0.955 / 0.988 / 0.998 | 0.95 | 1.00 | 10 000 |
+| MergeSort | sorted | n log₂n | 0.446 / 0.448 / 0.455 | 0.44 | 0.46 | 10 000 |
+| MergeSort | duplicates | n log₂n | 0.916 / 0.941 / 0.949 | 0.91 | 0.95 | 10 000 |
+| QuickSort | random | n log₂n | 1.845 / 1.896 / 1.979 | 1.80 | 2.00 | 10 000 |
+| QuickSort | sorted | n log₂n | 1.821 / 1.925 / 1.908 | 1.80 | 1.95 | 10 000 |
+| QuickSort | duplicates | **n** | 5.78 / 5.51 / 5.40 | 5.3 | 5.8 | 10 000 |
+| QuickSelect | random | n | 5.11 / 7.47 / 4.02 | 4.0 | 7.5 | 10 000 |
+| QuickSelect | sorted | n | 5.53 / 5.15 / 3.76 | 3.7 | 5.6 | 10 000 |
+| QuickSelect | duplicates | n | 3.29 / 1.50 / 3.90 | 1.4 | 4.0 | 10 000 |
 
-The ratio plots provide an empirical check. If the ratio becomes approximately constant as `n` grows, this supports the proposed Θ-growth on the tested data.
-
-For the supplied benchmark data, a practical rough interval can be obtained from the last two or three points of each series. Because the constants depend on the input distribution and implementation details, these are empirical bounds rather than mathematical proofs. For the overall sorting comparison metric, the ratio is approximately stable around a constant of the same order across the largest input sizes. For QuickSelect, the normalized comparison count is also much more stable when divided by `n` than when divided by `n log n`.
-
-Using the three largest measured sizes (`n0 = 10,000`) as a simple empirical window, the following rough constants can be read from the ratio values. Here `g(n) = n log2(n)` for the sorting algorithms and `g(n) = n` for QuickSelect. The values are not proofs of Θ; they are only a practical check on the measured data.
-
-| Algorithm | Input | Rough c1 | Rough c2 | n0 |
-|---|---|---:|---:|---:|
-| MergeSort | random | 0.955 | 0.998 | 10,000 |
-| MergeSort | sorted | 0.446 | 0.456 | 10,000 |
-| MergeSort | duplicates | 0.916 | 0.950 | 10,000 |
-| QuickSort | random | 1.81 | 1.97 | 10,000 |
-| QuickSort | sorted | 1.81 | 1.92 | 10,000 |
-| QuickSort | duplicates | 0.31 | 0.45 | 10,000 |
-| QuickSelect | random | 3.62 | 5.14 | 10,000 |
-| QuickSelect | sorted | 4.33 | 4.80 | 10,000 |
-| QuickSelect | duplicates | 2.70 | 3.50 | 10,000 |
-
-The plots are:
-
-- [Time vs n](plots/time_vs_n.png)
-- [Max recursion depth vs n](plots/depth_vs_n.png)
-- [Ratio vs n](plots/ratio_vs_n.png)
+- **MergeSort:** the ratio is almost constant on all three inputs ⇒ Θ(n log n). On sorted input it is ≈ 0.45, because merging two sorted runs stops after the left run is used up (n/2 comparisons per level).
+- **QuickSort, random and sorted:** the ratio is almost constant (≈ 1.8–2.0) ⇒ Θ(n log n). It is close to the expected 3·ln 2 ≈ 2.1 (1.5 comparisons per element × 1.39).
+- **QuickSort, duplicates:** the ratio to n·log₂n is **not** constant (it falls from 0.435 to 0.271), so `n log n` is the wrong g(n) for this input. The ratio to `n` is almost constant (5.4–5.8) ⇒ **Θ(n)**. With only 10 distinct values, every partition removes the whole "= pivot" block, so a few passes over the data are enough.
+- **QuickSelect:** comparisons / n shows no upward trend with n, but it is noisy (4–7.5) because the pivots are random and each point is one median-of-5 sample; therefore c₁ and c₂ are far apart. This supports Θ(n).
 
 ## 7. Discussion
 
-The measurements generally follow the theoretical expectations. MergeSort shows Θ(n log n) comparison growth and a recursion depth that increases logarithmically. QuickSort also follows the expected n log n scale on the tested random and sorted inputs, while the random pivot avoids the deterministic quadratic behavior of a fixed first/last pivot. The 3-way partition makes duplicate-heavy inputs particularly efficient because equal values are processed as one middle region. QuickSelect uses only one remaining side, which explains its approximately linear average comparison growth. Measured times are not perfectly smooth because of JVM warm-up, garbage collection, CPU cache effects, operating-system scheduling and constant factors. The MergeSort insertion-sort cutoff of 15 also changes the small-input behavior because tiny subarrays are handled by a simpler algorithm. Finally, wall-clock time depends strongly on the machine, while comparison counts and recursion depth are more useful for checking the theoretical growth.
+The comparison counts match the theory: MergeSort stays at ≈ 1.0·n·log₂n (0.45 on sorted input), QuickSort at ≈ 1.8–2.0·n·log₂n on random and sorted input, and QuickSelect at ≈ 4–7.5·n on random and sorted input, which is the expected ≈ 3.4·n multiplied by our ≈ 1.5 comparisons per element. The random pivot removes the sorted-input problem: at n = 10⁶ QuickSort needs 40 ms on sorted input and 84 ms on random input, and the recursion depth is 13 (below log₂ n ≈ 19.9) because only the smaller side is recursed into. MergeSort's depth is 18 ≈ log₂(n/15) + 2, because the cutoff of 15 replaces the lowest levels by Insertion Sort; this changes the constant, not the growth. The 3-way partition makes duplicate-heavy input the cheapest case for QuickSort (Θ(n), depth 2, 10.6 ms at n = 10⁶), and QuickSelect is about 10 times faster than QuickSort on random input (8.3 ms vs 84 ms) as Θ(n) versus Θ(n log n) predicts. The time per n·log₂n is almost equal for both sorts for n ≥ 10⁴ (≈ 4.2–4.5 ns), so the running time follows n log n as well. The differences at small n (at n = 1 000 QuickSort needs 5.3 ns and MergeSort 2.6 ns per n·log₂n) are consistent with JVM warm-up and fixed overheads, since these runs take only 0.03–0.05 ms. MergeSort becomes slower per element as n grows (2.6 → 4.4 ns), which is consistent with CPU cache effects, because the array plus the buffer no longer fit into the fast caches. Both sorts are also faster on sorted input than on random input (MergeSort 27 ms vs 87 ms at n = 10⁶): MergeSort needs fewer comparisons there (0.45 instead of 1.0·n·log₂n), and for both sorts the branches are easier for the CPU to predict; garbage collection can add extra noise to individual runs. Comparison counts and depth are therefore more reliable than wall-clock time for checking the theory.
 
 ## 8. Testing
 
-JUnit 5 tests cover:
+JUnit 5 tests (`AlgorithmTest`) cover:
 
-1. MergeSort against `Arrays.sort` on 100 random arrays.
-2. QuickSort against `Arrays.sort` on 100 random arrays.
-3. Empty arrays, one-element arrays, equal elements and already sorted arrays.
-4. QuickSort recursion depth on a sorted array of 100,000 elements, checking `maxDepth <= 2 log2(n)`.
-5. QuickSelect against `sorted[k]` on 100 random arrays.
-6. Invalid QuickSelect input, including an empty array and out-of-range `k`.
+1. MergeSort and QuickSort against `Arrays.sort` on 100 random arrays each.
+2. Edge cases for **both** sorts: empty array, one element, all elements equal, already sorted array (MergeSort also: reverse-sorted array and sizes around the cutoff 15).
+3. QuickSort depth on a sorted array of 100 000 elements: `maxDepth <= 2·log₂(n)`; QuickSort on a sorted array of 1 000 000 elements does not overflow the stack.
+4. QuickSort on an array of 200 000 equal elements needs at most 3n comparisons (no O(n²) on duplicates).
+5. QuickSelect against `sorted[k]` on 100 random arrays (with and without duplicates), for the overloads `select(a, k)` and `select(a, k, metrics)`.
+6. Invalid QuickSelect input: empty array, `k < 0`, `k >= n`.
+
+Run with `mvn clean test`.
 
 ## 9. Conclusion
 
-The project satisfies the required Divide-and-Conquer implementation, metrics, benchmark, testing, asymptotic analysis and reproducibility structure. The code separates algorithms, metrics, input generation, benchmarking and tests. The benchmark is started with one Java command and produces both the CSV file and the required PNG plots.
+All required components are implemented and tested, the measured comparison counts agree with the Θ bounds, and the plots and `results.csv` are reproducible with the commands in `README.md`. The one place where the naive guess `Θ(n log n)` fails is QuickSort on duplicate-heavy input, where the 3-way partition makes it Θ(n).
