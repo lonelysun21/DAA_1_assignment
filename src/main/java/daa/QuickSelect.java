@@ -3,6 +3,9 @@ package daa;
 public final class QuickSelect {
     private QuickSelect() {
     }
+    public static int select(int[] a, int k) {
+        return select(a, k, new Metrics());
+    }
 
     public static int select(int[] a, int k, Metrics metrics) {
         if (a == null || a.length == 0) {
